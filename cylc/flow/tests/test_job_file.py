@@ -32,37 +32,38 @@ TILDE_IN_OUT = [('~foo/bar bar', '~foo/"bar bar"'),
                 ('~a', '~a')]
 
 #  generic_job_conf = {
-    # "suite_name": "farm_noises",
-    # "task_id": "baa",
-    # "job_d": "1/moo/01",
-    # "remote_suite_d": "remote/suite/dir",
-    # "batch_system_name": "background",
-    # "host": "localhost",
-    # "owner": "me",
-    # "uuid_str": "neigh",
-    # "batch_submit_command_template": "woof",
-    # "execution_time_limit": "moo",
-    # "namespace_hierarchy": "root baa moo",
-    # "job_d": "1/baa/01",
-    # "job_file_path": "directory/job",
-    # "dependencies": ['moo', 'neigh', 'quack'],
-    # "try_num": 1,
-    # "param_env_tmpl": {},
-    # "param_var": {},
-    # "work_d":"remote/work/dir",
-    # "environment": {},
-    # "init-script": "This is the init script,
-    # "env-script": "This is the env script",
-    # "err-script": "This is the err script",
-    # "pre-script": "This is the pre script",
-    # "script": "This is the script",
-    # "post-script": "This is the post script",
-    # "exit-script": "This is the exit script",
-    # "batch_system_conf": {},
-    # "directives": {"moo": "foo",
-    # "             "cluck": "bar"},
-    # "logfiles": [],
+# "suite_name": "farm_noises",
+# "task_id": "baa",
+# "job_d": "1/moo/01",
+# "remote_suite_d": "remote/suite/dir",
+# "batch_system_name": "background",
+# "host": "localhost",
+# "owner": "me",
+# "uuid_str": "neigh",
+# "batch_submit_command_template": "woof",
+# "execution_time_limit": "moo",
+# "namespace_hierarchy": "root baa moo",
+# "job_d": "1/baa/01",
+# "job_file_path": "directory/job",
+# "dependencies": ['moo', 'neigh', 'quack'],
+# "try_num": 1,
+# "param_env_tmpl": {},
+# "param_var": {},
+# "work_d":"remote/work/dir",
+# "environment": {},
+# "init-script": "This is the init script,
+# "env-script": "This is the env script",
+# "err-script": "This is the err script",
+# "pre-script": "This is the pre script",
+# "script": "This is the script",
+# "post-script": "This is the post script",
+# "exit-script": "This is the exit script",
+# "batch_system_conf": {},
+# "directives": {"moo": "foo",
+# "             "cluck": "bar"},
+# "logfiles": [],
 #  }
+
 
 class TestJobFile(unittest.TestCase):
     def test_get_variable_value_definition(self):
@@ -152,32 +153,62 @@ class TestJobFile(unittest.TestCase):
             JobFileWriter()._write_prelude(fake_file, job_conf)
             self.assertEqual(fake_file.getvalue(), expected)
 
-    def test_write_script(self):
-        self.maxDiff=None
-        expected = ("\n\ncylc__job__inst__init_script() {\n# INIT-SCRIPT:\n"
-            "This is the init script\n}"
-            "\n\ncylc__job__inst__env_script() {\n# ENV-SCRIPT:"
-            "\nThis is the env script\n}\n"
-            "\n\ncylc__job__inst__err_script() {\n# ERR-SCRIPT:"
-            "\nThis is the err script\n}"
-            "\n\ncylc__job__inst__pre_script() {\n# PRE-SCRIPT:"
-            "\nThis is the pre script\n}\n"
-            "\n\ncylc__job__inst__script() {\n# SCRIPT:"
-            "\nThis is the script\n}"
-            "\ncylc__job__inst__post_script() {\n# POST-SCRIPT:"
-            "\nThis is the post script\n}\n"
-            "\n\ncylc__job__inst__exit_script() {\n# EXIT-SCRIPT:"
-            "\nThis is the exit script\n}\n"
-        )
+    @mock.patch.dict(
+        "os.environ", {'CYLC_SUITE_DEF_PATH': 'cylc/suite/def/path'})
+    @mock.patch("cylc.flow.job_file.get_remote_suite_work_dir")
+    def test_write_suite_environment(self, mocked_get_remote_suite_work_dir):
+        """Test suite environment is correctly written in jobscript"""
+        self.maxDiff = None
+        # set some suite environment conditions
+        # mocked_environ.return_value="cylc/suite/def/path"
+        mocked_get_remote_suite_work_dir.return_value = "work/dir"
+        cylc.flow.flags.debug = True
+        cylc.flow.flags.verbose = True
+        self.suite_env = {'CYLC_UTC': 'True',
+                          'CYLC_CYCLING_MODE': 'integer'}
 
-        job_conf= {
+        JobFileWriter.set_suite_env(self, self.suite_env)
+        expected = ('\n\ncylc__job__inst__cylc_env() {\n    # CYLC SUITE '
+                    'ENVIRONMENT:\n\n    export CYLC_SUITE_RUN_DIR='
+                    '"cylc-run/farm_noises"\n    '
+                    'CYLC_SUITE_WORK_DIR_ROOT="work/dir"\n    export '
+                    'CYLC_SUITE_DEF_PATH="remote/suite/dir"\n    export '
+                    'CYLC_SUITE_DEF_PATH_ON_SUITE_HOST="cylc/suite/def/path"\n'
+                    '    export CYLC_SUITE_UUID="neigh"')
+        job_conf = {
+            "host": "localhost",
+            "owner": "me",
+            "suite_name": "farm_noises",
+            "remote_suite_d": "remote/suite/dir",
+            "uuid_str": "neigh"
+        }
+        rund = "cylc-run/farm_noises"
+        with io.StringIO() as fake_file:
+
+            JobFileWriter()._write_suite_environment(fake_file, job_conf, rund)
+            self.assertEqual(fake_file.getvalue(), expected)
+
+    def test_write_script(self):
+        expected = (
+            "\n\ncylc__job__inst__init_script() {\n# INIT-SCRIPT:\n"
+            "This is the init script\n}\n\ncylc__job__inst__env_script()"
+            " {\n# ENV-SCRIPT:\nThis is the env script\n}\n\n"
+            "cylc__job__inst__err_script() {\n# ERR-SCRIPT:\nThis is the err "
+            "script\n}\n\ncylc__job__inst__pre_script() {\n# PRE-SCRIPT:\n"
+            "This is the pre script\n}\n\ncylc__job__inst__script() {\n"
+            "# SCRIPT:\nThis is the script\n}\n\ncylc__job__inst__post_script"
+            "() {\n# POST-SCRIPT:\nThis is the post script\n}\n\n"
+            "cylc__job__inst__exit_script() {\n# EXIT-SCRIPT:\n"
+            "This is the exit script\n}")
+
+        job_conf = {
             "init-script": "This is the init script",
             "env-script": "This is the env script",
             "err-script": "This is the err script",
             "pre-script": "This is the pre script",
             "script": "This is the script",
             "post-script": "This is the post script",
-            "exit-script": "This is the exit script",        
+            "exit-script": "This is the exit script",
         }
 
         with io.StringIO() as fake_file:
@@ -186,9 +217,17 @@ class TestJobFile(unittest.TestCase):
 
             self.assertEqual(fake_file.getvalue(), expected)
 
-    
-    
-    # def test_write_epilogue(self):
+    def test_write_epilogue(self):
+
+        expected = ('\n\n. \"cylc-run/farm_noises/.service/etc/job.sh\"\n'
+                    'cylc__job__main\n\n#EOF: 1/moo/01\n')
+        job_conf = {'job_d': "1/moo/01"}
+        run_d = "cylc-run/farm_noises"
+        with io.StringIO() as fake_file:
+
+            JobFileWriter()._write_epilogue(fake_file, job_conf, run_d)
+
+            self.assertEqual(fake_file.getvalue(), expected)
 
 
 if __name__ == '__main__':
