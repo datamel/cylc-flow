@@ -70,7 +70,7 @@ class JobFileWriter(object):
                 # suite bin access must be before runtime environment
                 # because suite bin commands may be used in variable
                 # assignment expressions: FOO=$(command args).
-                self._write_environment_2(handle, job_conf)
+                self._write_runtime_environment(handle, job_conf)
                 self._write_script(handle, job_conf)
                 self._write_epilogue(handle, job_conf, run_d)
         except IOError as exc:
@@ -237,7 +237,7 @@ class JobFileWriter(object):
         handle.write("\n}")
 
     @staticmethod
-    def _write_environment_2(handle, job_conf):
+    def _write_runtime_environment(handle, job_conf):
         """Run time environment part 2."""
         if job_conf['environment']:
             handle.write("\n\ncylc__job__inst__user_env() {")

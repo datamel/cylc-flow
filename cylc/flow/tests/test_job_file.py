@@ -16,7 +16,7 @@
 
 import unittest
 import io
-from tempfile import TemporaryFile
+from tempfile import TemporaryFile, TemporaryDirectory
 from unittest import mock
 
 import cylc.flow.flags
@@ -86,6 +86,27 @@ class TestJobFile(unittest.TestCase):
             with TemporaryFile(mode="w+") as handle:
                 JobFileWriter()._write_prelude(handle, job_conf)
         self.assertIn("bad cylc executable", str(ex.exception))
+
+    @mock.patch("cylc.flow.job_file.get_remote_suite_run_dir")
+    def test_write_io_error(self, mocked_get_remote_suite_run_dir):
+
+        job_conf = {
+            "host": "localhost",
+            "owner": "me",
+            "suite_name": "farm_noises",
+            "remote_suite_d": "remote/suite/dir",
+            "uuid_str": "neigh"
+        }
+        mocked_get_remote_suite_run_dir.return_value = "run/dir"
+
+        local_job_file_path = "blah/dee/blah"
+
+        with mock.patch("builtins.open", mock.mock_open()) as mock_file:
+            mock_file.side_effect = IOError()
+
+            with assertRaises(JobFileWriter().write(local_job_file_path, job_conf), OSError):
+                mock_file.assert_called_with("blah/dee/blah.tmp", 'w')
+
 
     def test_write_header(self):
         """Test the header is correctly written"""
@@ -168,6 +189,7 @@ class TestJobFile(unittest.TestCase):
                           'CYLC_CYCLING_MODE': 'integer'}
 
         JobFileWriter.set_suite_env(self, self.suite_env)
+        # suite env not correctly setting...check this
         expected = ('\n\ncylc__job__inst__cylc_env() {\n    # CYLC SUITE '
                     'ENVIRONMENT:\n\n    export CYLC_SUITE_RUN_DIR='
                     '"cylc-run/farm_noises"\n    '
@@ -187,7 +209,7 @@ class TestJobFile(unittest.TestCase):
 
             JobFileWriter()._write_suite_environment(fake_file, job_conf, rund)
             self.assertEqual(fake_file.getvalue(), expected)
-
+    
     def test_write_script(self):
         expected = (
             "\n\ncylc__job__inst__init_script() {\n# INIT-SCRIPT:\n"
@@ -217,6 +239,56 @@ class TestJobFile(unittest.TestCase):
 
             self.assertEqual(fake_file.getvalue(), expected)
 
+
+    def test_write_task_environment(self):
+        """Test task environment is correctly written in jobscript"""
+        # set some task environment conditions
+        expected = ('\n\n    # CYLC TASK ENVIRONMENT:\n    '
+                    'export CYLC_TASK_JOB="1/moo/01"\n    export '
+                    'CYLC_TASK_NAMESPACE_HIERARCHY="r o o t   '
+                    'b a a   m o o"\n    export CYLC_TASK_DEPENDENCIES'
+                    '="moo neigh quack"\n    export CYLC_TASK_TRY_NUMBER='
+                    '1\n    export param_env_tmpl_1="moo"\n    '
+                    'export param_env_tmpl_2="baa"\n    export '
+                    'CYLC_TASK_PARAM_duck="quack"\n    export '
+                    'CYLC_TASK_PARAM_mouse="squeak"\n    '
+                    'CYLC_TASK_WORK_DIR_BASE=\'farm_noises/work_d\'\n}')
+        job_conf = {
+            "job_d": "1/moo/01",
+            "namespace_hierarchy": "root baa moo",
+            "dependencies": ['moo', 'neigh', 'quack'],
+            "try_num": 1,
+            "param_env_tmpl": {"param_env_tmpl_1": "moo",
+                               "param_env_tmpl_2": "baa"},
+            "param_var": {"duck": "quack",
+                          "mouse": "squeak"},
+            "work_d":"farm_noises/work_d"
+        }
+        with io.StringIO() as fake_file:
+
+            JobFileWriter()._write_task_environment(fake_file, job_conf)
+            self.assertEqual(fake_file.getvalue(), expected)
+
+
+    def test_write_runtime_environment(self):
+
+        expected = (
+            '\n\ncylc__job__inst__user_env() {\n    # TASK RUNTIME '
+            'ENVIRONMENT:\n    export cow sheep duck\n'
+            '    cow=~/"moo"\n    sheep=~baa/"baa"\n    '
+            'duck=~quack\n}')
+        job_conf = {
+            'environment': {'cow':'~/moo', 
+            'sheep': '~baa/baa', 
+            'duck': '~quack'}
+        }
+        with io.StringIO() as fake_file:
+
+            JobFileWriter()._write_runtime_environment(fake_file, job_conf)
+
+            self.assertEqual(fake_file.getvalue(), expected)
+
+
     def test_write_epilogue(self):
 
         expected = ('\n\n. \"cylc-run/farm_noises/.service/etc/job.sh\"\n'
@@ -228,7 +300,26 @@ class TestJobFile(unittest.TestCase):
             JobFileWriter()._write_epilogue(fake_file, job_conf, run_d)
 
             self.assertEqual(fake_file.getvalue(), expected)
+    
+    @mock.patch("cylc.flow.job_file.JobFileWriter._get_host_item")
+    def test_write_global_init_scripts(self, mocked_get_host_item):
 
+        mocked_get_host_item.return_value = (
+            'global init-script = \n'
+            'export COW=moo\n'
+            'export PIG=oink\n'
+            'export DONKEY=HEEHAW\n'
+        )
+        job_conf = {}
+        expected = ('\n\ncylc__job__inst__global_init_script() {\n'
+                    '# GLOBAL-INIT-SCRIPT:\nglobal init-script = \nexport '
+                    'COW=moo\nexport PIG=oink\nexport DONKEY=HEEHAW\n\n}')
+        with io.StringIO() as fake_file:
+
+            JobFileWriter()._write_global_init_script(fake_file, job_conf)
+            self.assertEqual(fake_file.getvalue(), expected)
+
+        
 
 if __name__ == '__main__':
     unittest.main()
