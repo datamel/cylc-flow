@@ -291,7 +291,7 @@ with Conf('flow.rc', desc='''
                 similar interface to ``scp``.
             ''')
             Conf('ssh command',
-                 VDR.V_STRING, 'ssh -oBatchMode=yes -oConnectTimeout=10 -oControlPersist=yes',
+                 VDR.V_STRING, 'ssh -oBatchMode=yes -oConnectTimeout=10',
                  desc='''
                 A string for the command used to invoke commands on this host.ssh
                 This is not used on the suite host unless you run local tasks
@@ -478,7 +478,7 @@ with Conf('flow.rc', desc='''
             Conf('scp command',
                  VDR.V_STRING, 'scp -oBatchMode=yes -oConnectTimeout=10')
             Conf('ssh command',
-                 VDR.V_STRING, 'ssh -oBatchMode=yes -oConnectTimeout=10 -oControlPersist=yes')
+                 VDR.V_STRING, 'ssh -oBatchMode=yes -oConnectTimeout=10')
             Conf('rsync includes', VDR.V_STRING_LIST, [          
                 '.service', # explicitly include folder but not its contents
                 '.service/contact',
@@ -517,6 +517,14 @@ with Conf('flow.rc', desc='''
             Conf('execution polling intervals', VDR.V_INTERVAL_LIST)
             Conf('scp command', VDR.V_STRING)
             Conf('ssh command', VDR.V_STRING)
+            Conf('rsync includes', VDR.V_STRING_LIST, [          
+                '.service', # explicitly include folder but not its contents
+                '.service/contact',
+                '.service/etc/**',
+                '.service/server.key',
+                'app**',
+                'bin**',
+                'lib**'])
             Conf('use login shell', VDR.V_BOOLEAN)
             Conf('cylc executable', VDR.V_STRING)
             Conf('global init-script', VDR.V_STRING)

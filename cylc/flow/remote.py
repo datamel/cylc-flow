@@ -138,22 +138,48 @@ def run_cmd(
         else:
             return True
 
-def construct_rsync_over_ssh_cmd(src_path, dst_path, dst_host, includes):
-    """ Moooo """
 
-    rsync_cmd = shlex.split("rsync --dry-run -va")
+def get_files_to_rsync(dst_host):
+    """Returns a list of directories to include in the rsync.
+        Collects any additional directories, provided in config and 
+        adds them to the list of default directories that will be installed
+        by rsync on the remote platform
+    """
+
+    includes = [
+        ".service", # explicitly include folder but not contents
+        ".service/contact",
+        ".service/server.key",
+        "app**",
+        "bin**",
+        "etc**",
+        "lib**"
+    ]
+    for include in glbl_cfg().get_host_item("rsync includes", host=dst_host):
+        includes.append(include)
+    return includes
+
+def construct_rsync_over_ssh_cmd(src_path, dst_path, dst_host):
+    """Contructs the rsync command used for remote file installation
+        Args:
+        src_path(string): source path
+        dst_path(string): path of target
+        dst_host(string): remote host name
+    """
+
+    rsync_cmd = "rsync -va --delete"
 
     ssh_cmd = str(glbl_cfg().get_host_item("ssh command", host=dst_host))
-    rsync_cmd.append(f"--rsh={ssh_cmd}")
-
-    includes = glbl_cfg().get_host_item("rsync includes", host=dst_host)
+    
+    rsync_cmd = shlex.split(rsync_cmd) + ["--rsh=" + ssh_cmd]
+    includes = get_files_to_rsync(dst_host)
     for include in includes:
        rsync_cmd.append(f"--include={include}")
     rsync_cmd.append("--exclude=*")  # exclude everything else
 
     rsync_cmd.append(f"{src_path}/")
     rsync_cmd.append(f"{dst_host}:{dst_path}/")
-
+    LOG.debug(f"rsync cmd used for file install: {rsync_cmd}")
     return rsync_cmd
 
 def construct_ssh_cmd(raw_cmd, user=None, host=None, forward_x11=False,
