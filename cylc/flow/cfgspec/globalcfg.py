@@ -291,9 +291,9 @@ with Conf('flow.rc', desc='''
                 similar interface to ``scp``.
             ''')
             Conf('ssh command',
-                 VDR.V_STRING, 'ssh -oBatchMode=yes -oConnectTimeout=10',
+                 VDR.V_STRING, 'ssh -oBatchMode=yes -oConnectTimeout=10 -oControlPersist=yes',
                  desc='''
-                A string for the command used to invoke commands on this host.
+                A string for the command used to invoke commands on this host.ssh
                 This is not used on the suite host unless you run local tasks
                 under another user account.  The value is assumed to be ``ssh``
                 with some initial options or a command that implements a
@@ -320,6 +320,31 @@ with Conf('flow.rc', desc='''
                 which will use the default shell on the remote machine,
                 sourcing ``~/.bashrc`` (or ``~/.cshrc``) to set up the
                 environment.
+            ''')
+            Conf('rsync includes', VDR.V_STRING_LIST, [          
+            '.service', # explicitly include folder but not its contents
+            '.service/contact',
+            '.service/server.key',
+            'app**',
+            'bin**',
+            'etc**',
+            'lib**'], desc='''
+                Configure the files to be included in the file installation 
+                on the remote platform.
+
+                .. note::
+
+                    These default to the following directories:
+                        app
+                        bin
+                        etc
+                        lib
+                    And to the following files (from the .service directory):
+                        contact (contains information about the running workflow)
+                        server.key (required for authentication)
+
+               Specify a full path if ``cylc`` is not in ``$PATH`` when it is
+                invoked via ``ssh`` on this host.
             ''')
             Conf('remote hosts', VDR.V_STRING_LIST)
             Conf('cylc executable', VDR.V_STRING, 'cylc', desc='''
@@ -453,7 +478,15 @@ with Conf('flow.rc', desc='''
             Conf('scp command',
                  VDR.V_STRING, 'scp -oBatchMode=yes -oConnectTimeout=10')
             Conf('ssh command',
-                 VDR.V_STRING, 'ssh -oBatchMode=yes -oConnectTimeout=10')
+                 VDR.V_STRING, 'ssh -oBatchMode=yes -oConnectTimeout=10 -oControlPersist=yes')
+            Conf('rsync includes', VDR.V_STRING_LIST, [          
+                '.service', # explicitly include folder but not its contents
+                '.service/contact',
+                '.service/etc/**',
+                '.service/server.key',
+                'app**',
+                'bin**',
+                'lib**'])
             Conf('use login shell', VDR.V_BOOLEAN, True)
             Conf('cylc executable', VDR.V_STRING, 'cylc')
             Conf('global init-script', VDR.V_STRING)

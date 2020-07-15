@@ -15,6 +15,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """Run command on a remote, (i.e. a remote [user@]host)."""
 
+from logging import DEBUG
 import os
 from shlex import quote
 from posix import WIFSIGNALED
@@ -137,6 +138,23 @@ def run_cmd(
         else:
             return True
 
+def construct_rsync_over_ssh_cmd(src_path, dst_path, dst_host, includes):
+    """ Moooo """
+
+    rsync_cmd = shlex.split("rsync --dry-run -va")
+
+    ssh_cmd = str(glbl_cfg().get_host_item("ssh command", host=dst_host))
+    rsync_cmd.append(f"--rsh={ssh_cmd}")
+
+    includes = glbl_cfg().get_host_item("rsync includes", host=dst_host)
+    for include in includes:
+       rsync_cmd.append(f"--include={include}")
+    rsync_cmd.append("--exclude=*")  # exclude everything else
+
+    rsync_cmd.append(f"{src_path}/")
+    rsync_cmd.append(f"{dst_host}:{dst_path}/")
+
+    return rsync_cmd
 
 def construct_ssh_cmd(raw_cmd, user=None, host=None, forward_x11=False,
                       stdin=False, ssh_login_shell=None, ssh_cylc=None,

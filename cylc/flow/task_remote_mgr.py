@@ -34,7 +34,8 @@ from cylc.flow.cfgspec.glbl_cfg import glbl_cfg
 from cylc.flow.exceptions import TaskRemoteMgmtError
 import cylc.flow.flags
 from cylc.flow.hostuserutil import is_remote, is_remote_host, is_remote_user
-from cylc.flow.pathutil import get_remote_suite_run_dir
+from cylc.flow.pathutil import get_remote_suite_run_dir, get_suite_run_dir
+from cylc.flow.remote import construct_rsync_over_ssh_cmd, run_cmd
 from cylc.flow.subprocctx import SubProcContext
 from cylc.flow.suite_files import (
     SuiteFiles,
@@ -126,6 +127,31 @@ class TaskRemoteMgr(object):
             if value is not None:
                 del self.remote_host_str_map[key]
 
+
+    def get_files_to_rsync(self):
+        """Returns a list of directories to include in the rsync.
+            Collects any additional directories, provided in config and 
+            adds them to the list of default directories that will be installed
+            by rsync on the remote platform"""
+        from pathlib import Path
+        includes = (
+            ".service", # explicitly include folder but not contents
+            ".service/contact",
+            ".service/server.key",
+            "app**",
+            "bin**",
+            "etc**",
+            "lib**"
+        )
+       # for dir in glbl_cfg().get_host_item('task communication method', host, owner)
+        #    if Path.exists(dir):
+        #        includes += dir
+        #    else:
+        #        LOG.debug(f"{dir} was not able to be installed on platform")
+
+        return sorted(includes)
+
+
     def remote_init(self, host, owner, curve_auth, client_pub_key_dir):
         """Initialise a remote [owner@]host if necessary.
 
@@ -150,7 +176,7 @@ class TaskRemoteMgr(object):
         """
         if self.single_task_mode or not is_remote(host, owner):
             return REMOTE_INIT_NOT_REQUIRED
-        try:
+        try: 
             status = self.remote_init_map[(host, owner)]
         except KeyError:
             pass  # Not yet initialised
@@ -173,12 +199,23 @@ class TaskRemoteMgr(object):
         # Create a TAR archive with the service files,
         # so they can be sent later via SSH's STDIN to the task remote.
         tmphandle = self.proc_pool.get_temporary_file()
-        tarhandle = tarfile.open(fileobj=tmphandle, mode='w')
-        for path, arcname in items:
-            tarhandle.add(path, arcname=arcname)
-        tarhandle.close()
-        tmphandle.seek(0)
-        # UUID file - for remote to identify shared file system with suite host
+        # tarhandle = tarfile.open(fileobj=tmphandle, mode='w')
+        # for path, arcname in items:
+        #     tarhandle.add(path, arcname=arcname)
+        # tarhandle.close()
+        # tmphandle.seek(0)
+        src_path = get_suite_run_dir( self.suite)
+        dst_path = get_remote_suite_run_dir(host, owner, self.suite)
+        includes = TaskRemoteMgr.get_files_to_rsync(self)
+
+        try:
+            run_cmd(construct_rsync_over_ssh_cmd(
+                    src_path,
+                    dst_path,
+                    host,
+                    includes))
+        except Exception as ex:
+            LOG.error(f"{ex}!!!!!!Problem Rsyncing {includes}")
         uuid_fname = os.path.join(
             get_suite_srv_dir(self.suite),
             FILE_BASE_UUID
@@ -200,8 +237,7 @@ class TaskRemoteMgr(object):
         self.proc_pool.put_command(
             SubProcContext(
                 'remote-init',
-                cmd,
-                stdin_files=[tmphandle]),
+                cmd),
             self._remote_init_callback,
             [host, owner, tmphandle, self.suite,
              curve_auth, client_pub_key_dir])

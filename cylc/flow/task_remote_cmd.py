@@ -38,7 +38,7 @@ REMOTE_INIT_DONE = 'REMOTE INIT DONE'
 REMOTE_INIT_NOT_REQUIRED = 'REMOTE INIT NOT REQUIRED'
 
 
-def remove_keys_on_platform(srvd):
+def remove_keys_on_platform(srvd, full_clean=False):
     """Removes platform-held authentication keys"""
     keys = {
         "client_private_key": KeyInfo(
@@ -49,17 +49,20 @@ def remove_keys_on_platform(srvd):
             KeyType.PUBLIC,
             KeyOwner.CLIENT,
             suite_srv_dir=srvd, server_held=False),
-        "server_public_key": KeyInfo(
+
+    }
+
+    if full_clean == True:
+        keys.update({"server_public_key": KeyInfo(
             KeyType.PUBLIC,
             KeyOwner.SERVER,
-            suite_srv_dir=srvd),
-    }
+            suite_srv_dir=srvd), })
     # WARNING, DESTRUCTIVE. Removes old keys if they already exist.
 
     for k in keys.values():
         if os.path.exists(k.full_key_path):
-            os.remove(k.full_key_path)
-
+           os.remove(k.full_key_path)
+        
 
 def create_platform_keys(srvd):
     """Create or renew authentication keys for suite 'reg' in the .service
@@ -101,12 +104,7 @@ def remote_init(uuid_str, rund, indirect_comm=None):
     os.chdir(rund)
     # Extract job.sh from library, for use in job scripts.
     extract_resources(SuiteFiles.Service.DIRNAME, ['etc/job.sh'])
-    try:
-        tarhandle = tarfile.open(fileobj=sys.stdin.buffer, mode='r|')
-        tarhandle.extractall()
-        tarhandle.close()
-    finally:
-        os.chdir(oldcwd)
+    os.chdir(oldcwd)
     if indirect_comm:
         fname = os.path.join(srvd, SuiteFiles.Service.CONTACT)
         with open(fname, 'a') as handle:
@@ -137,7 +135,7 @@ def remote_tidy(rund):
     else:
         if cylc.flow.flags.debug:
             print('Deleted: %s' % fname)
-    remove_keys_on_platform(srvd)
+    remove_keys_on_platform(srvd, full_clean=True)
     try:
         os.rmdir(srvd)  # remove directory if empty
     except OSError:
