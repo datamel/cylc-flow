@@ -472,6 +472,35 @@ with Conf(
                      # bar triggers if submission of foo fails
                      foo:submit-fail => bar
             ''')
+        with Conf('rsync includes', desc='''
+            Configure the directories are files to be included in the file 
+            installation on the remote platform. 
+            
+                .. note::
+
+                    These default to the following directories:
+                        app
+                        bin
+                        etc
+                        lib
+                    And to the following files (from the .service directory):
+                        contact (contains information about the running workflow)
+                        server.key (required for authentication)'''):
+                Conf('directories', VDR.V_STRING_LIST, desc='''
+                This section is used to add directories to be included in the
+                remote installation''')
+                Conf('files', VDR.V_STRING_LIST, desc='''
+                A list of specific files to be included in the remote
+                installation. These should be located in the top level of your
+                Cylc suite, ie. the directory that contains your suite.rc file.
+                To add two directories to the installation:
+                .. code-block:: cylc
+
+                   [scheduling]
+                       [[remote includes]]
+                           directories = [somedir, somedir2]
+                           files = [file1, file2, file3]
+                ''')
 
     with Conf('runtime', desc='''
         This section is used to specify how, where, and what to execute when
