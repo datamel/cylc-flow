@@ -147,16 +147,15 @@ def get_files_to_rsync(dst_host):
     """
 
     includes = [
-        ".service", # explicitly include folder but not contents
-        ".service/contact",
-        ".service/server.key",
-        "app**",
-        "bin**",
-        "etc**",
-        "lib**"
+        "/.service/", # explicitly include folder but not contents
+        "/.service/server.key",
+        "/app/***",
+        "/bin/***",
+        "/etc/***",
+        "/lib/***"
     ]
-    for include in glbl_cfg().get_host_item("rsync includes", host=dst_host):
-        includes.append(include)
+   # for include in glbl_cfg().get_host_item("rsync includes", host=dst_host):
+    #    includes.append(include)
     return includes
 
 def construct_rsync_over_ssh_cmd(src_path, dst_path, dst_host):
@@ -167,7 +166,7 @@ def construct_rsync_over_ssh_cmd(src_path, dst_path, dst_host):
         dst_host(string): remote host name
     """
 
-    rsync_cmd = "rsync -va --delete"
+    rsync_cmd = "rsync -v --perms --recursive --links --checksum --delete"
 
     ssh_cmd = str(glbl_cfg().get_host_item("ssh command", host=dst_host))
     
