@@ -139,11 +139,11 @@ def run_cmd(
             return True
 
 
-def get_files_to_rsync(dst_host):
-    """Returns a list of directories to include in the rsync.
+def get_includes_to_rsync(dst_host):
+    """Returns a list of directories/files to include in the rsync.
         Collects any additional directories, provided in config and 
         adds them to the list of default directories that will be installed
-        by rsync on the remote platform
+        by rsync on the remote platform.
     """
 
     includes = [
@@ -154,11 +154,18 @@ def get_files_to_rsync(dst_host):
         "/etc/***",
         "/lib/***"
     ]
-    include = self.config.cfg['scheduler']['include']
+    extra_includes = []
 
-    for include in glbl_cfg().get_host_item("include", host=dst_host):
-    #    includes.append(include)
-    return includes
+    for include in extra_includes:
+        if include is ends in a slash:  # item is a directory
+            reformat string so it is include/***
+            include.append
+
+
+        includes.append(include)
+        else:  # item is a file
+            incudes.append(include)
+        return includes
 
 def construct_rsync_over_ssh_cmd(src_path, dst_path, dst_host):
     """Contructs the rsync command used for remote file installation
@@ -175,13 +182,13 @@ def construct_rsync_over_ssh_cmd(src_path, dst_path, dst_host):
     rsync_cmd = shlex.split(rsync_cmd) 
     rsync_cmd.append("--rsh=" '"' + ssh_cmd + '"')
     rsync_cmd.append("--filter=': .rsync-filter'")
-    includes = get_files_to_rsync(dst_host)
+    includes = get_includes_to_rsync(dst_host)
     for include in includes:
        rsync_cmd.append(f"--include={include}")
     rsync_cmd.append("--exclude=*")  # exclude everything else
     rsync_cmd.append(f"{src_path}/")
     rsync_cmd.append(f"{dst_host}:{dst_path}/")
-    LOG.debug(f"rsync cmd usedor file install: {rsync_cmd}")
+    LOG.debug(f"rsync cmd use for file install: {rsync_cmd}")
     return rsync_cmd
 
 def construct_ssh_cmd(raw_cmd, user=None, host=None, forward_x11=False,

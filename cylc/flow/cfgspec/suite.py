@@ -98,11 +98,20 @@ with Conf(
             These should be located in the top level of your Cylc suite, 
             ie. the directory that contains your suite.rc file.
             Directories must have a trailing slash.
+            For example, to add the following items to your file installation: 
             
+                .. code-block:: bash
+
+                    ~/cylc-run/suitex
+                    |__dir1/
+                    |__dir2/
+                    |__file1
+                    |__file2
+  
                 .. code-block:: cylc
 
                    [scheduler]
-                       include = [dir/, dir2/, file1, file2, file3]
+                       include = [dir/, dir2/, file1, file2]
                 ''')
     with Conf('cylc'):
         Conf('UTC mode', VDR.V_BOOLEAN, False)

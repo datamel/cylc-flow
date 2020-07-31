@@ -227,7 +227,8 @@ class SuiteConfig(object):
             for key in ('initial cycle point', 'final cycle point'):
                 if key not in self.cfg['scheduling']:
                     self.cfg['scheduling'][key] = '1'
-
+        if ('includes' in self.cfg['scheduler']):
+            
         # allow test suites with no [runtime]:
         if 'runtime' not in self.cfg:
             self.cfg['runtime'] = OrderedDictWithDefaults()
