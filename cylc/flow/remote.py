@@ -154,7 +154,9 @@ def get_files_to_rsync(dst_host):
         "/etc/***",
         "/lib/***"
     ]
-   # for include in glbl_cfg().get_host_item("rsync includes", host=dst_host):
+    include = self.config.cfg['scheduler']['include']
+
+    for include in glbl_cfg().get_host_item("include", host=dst_host):
     #    includes.append(include)
     return includes
 
@@ -170,15 +172,16 @@ def construct_rsync_over_ssh_cmd(src_path, dst_path, dst_host):
 
     ssh_cmd = str(glbl_cfg().get_host_item("ssh command", host=dst_host))
     
-    rsync_cmd = shlex.split(rsync_cmd) + ["--rsh=" + ssh_cmd]
+    rsync_cmd = shlex.split(rsync_cmd) 
+    rsync_cmd.append("--rsh=" '"' + ssh_cmd + '"')
+    rsync_cmd.append("--filter=': .rsync-filter'")
     includes = get_files_to_rsync(dst_host)
     for include in includes:
        rsync_cmd.append(f"--include={include}")
     rsync_cmd.append("--exclude=*")  # exclude everything else
-
     rsync_cmd.append(f"{src_path}/")
     rsync_cmd.append(f"{dst_host}:{dst_path}/")
-    LOG.debug(f"rsync cmd used for file install: {rsync_cmd}")
+    LOG.debug(f"rsync cmd usedor file install: {rsync_cmd}")
     return rsync_cmd
 
 def construct_ssh_cmd(raw_cmd, user=None, host=None, forward_x11=False,
