@@ -226,10 +226,7 @@ class SuiteConfig(object):
             self.cfg['scheduling']['cycling mode'] = INTEGER_CYCLING_TYPE
             for key in ('initial cycle point', 'final cycle point'):
                 if key not in self.cfg['scheduling']:
-                    self.cfg['scheduling'][key] = '1'
-       # if ('includes' in self.cfg['scheduler']):
-        
-            
+                    self.cfg['scheduling'][key] = '1'            
         # allow test suites with no [runtime]:
         if 'runtime' not in self.cfg:
             self.cfg['runtime'] = OrderedDictWithDefaults()
@@ -2251,3 +2248,7 @@ class SuiteConfig(object):
             return []
         else:
             return None
+
+    def get_rsync_includes(self):
+        if self.cfg['scheduler']['includes']:
+            return self.cfg['scheduler']['includes']

@@ -132,7 +132,7 @@ class TaskRemoteMgr(object):
     
 
 
-    def remote_init(self, host, owner, curve_auth, client_pub_key_dir):
+    def remote_init(self, host, owner, curve_auth, client_pub_key_dir, rsync_includes):
         """Initialise a remote [owner@]host if necessary.
 
         Create UUID file on suite host ".service/uuid" for remotes to identify
@@ -192,7 +192,8 @@ class TaskRemoteMgr(object):
             run_cmd(construct_rsync_over_ssh_cmd(
                     src_path,
                     dst_path,
-                    host))
+                    host,
+                    rsync_includes))
         except Exception as ex:
             LOG.error(f"Problem during rsync: {ex}")
         # UUID file - for remote to identify shared file system with suite host

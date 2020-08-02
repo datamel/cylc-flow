@@ -111,7 +111,7 @@ with Conf(
                 .. code-block:: cylc
 
                    [scheduler]
-                       include = [dir/, dir2/, file1, file2]
+                       includes = dir/, dir2/, file1, file2
                 ''')
     with Conf('cylc'):
         Conf('UTC mode', VDR.V_BOOLEAN, False)

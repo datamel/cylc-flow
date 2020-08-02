@@ -292,7 +292,7 @@ with Conf('flow.rc', desc='''
             ''')
             Conf('ssh command',
                  VDR.V_STRING, 
-                 'ssh -M -oBatchMode=yes -oConnectTimeout=10 -oControlPersist',
+                 'ssh -oBatchMode=yes -oConnectTimeout=10',
                  desc='''
                 A string for the command used to invoke commands on this host.ssh
                 This is not used on the suite host unless you run local tasks
@@ -454,7 +454,7 @@ with Conf('flow.rc', desc='''
             Conf('scp command',
                  VDR.V_STRING, 'scp -oBatchMode=yes -oConnectTimeout=10')
             Conf('ssh command', VDR.V_STRING,
-            'ssh -M -oBatchMode=yes -oConnectTimeout=10 -oControlPersist=yes')
+            'ssh -oBatchMode=yes -oConnectTimeout=10')
             Conf('use login shell', VDR.V_BOOLEAN, True)
             Conf('cylc executable', VDR.V_STRING, 'cylc')
             Conf('global init-script', VDR.V_STRING)

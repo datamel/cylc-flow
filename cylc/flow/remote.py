@@ -139,7 +139,7 @@ def run_cmd(
             return True
 
 
-def get_includes_to_rsync(dst_host):
+def get_includes_to_rsync(rsync_includes=None):
     """Returns a list of directories/files to include in the rsync.
         Collects any additional directories, provided in config and 
         adds them to the list of default directories that will be installed
@@ -148,6 +148,7 @@ def get_includes_to_rsync(dst_host):
 
     includes = [
         "/.service/", # explicitly include folder but not contents
+        "/.service/contact",
         "/.service/server.key",
         "/app/***",
         "/bin/***",
@@ -155,21 +156,17 @@ def get_includes_to_rsync(dst_host):
         "/lib/***"
     ]
 
-    # extra_includes = []
-
-    # for include in extra_includes:
-    #     if include is ends in a slash:  # item is a directory
-    #         reformat string so it is include/***
-    #         include.append
-
-
-    #     includes.append(include)
-    #     else:  # item is a file
-    #         incudes.append(include)
+    if rsync_includes:
+        for include in rsync_includes:
+            if include.endswith("/"):  # item is a directory
+                includes.append("/" + include +"***")
+            else:  # item is a file
+                includes.append("/" + include) 
+                
     return includes
 
-def construct_rsync_over_ssh_cmd(src_path, dst_path, dst_host):
-    """Contructs the rsync command used for remote file installation
+def construct_rsync_over_ssh_cmd(src_path, dst_path, dst_host, rsync_includes=None):
+    """Constructs the rsync command used for remote file installation
         Args:
         src_path(string): source path
         dst_path(string): path of target
@@ -183,7 +180,7 @@ def construct_rsync_over_ssh_cmd(src_path, dst_path, dst_host):
     rsync_cmd = shlex.split(rsync_cmd) 
     rsync_cmd.append("--rsh=" + ssh_cmd )
     rsync_cmd.append("--filter=: .rsync-filter")
-    includes = get_includes_to_rsync(dst_host)
+    includes = get_includes_to_rsync(rsync_includes)
     for include in includes:
        rsync_cmd.append(f"--include={include}")
     rsync_cmd.append("--exclude=*")  # exclude everything else

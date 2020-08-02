@@ -698,7 +698,7 @@ class Scheduler:
             for host, owner in auths.copy():
                 if (
                     self.task_job_mgr.task_remote_mgr.remote_init(
-                        host, owner, self.curve_auth, self.client_pub_key_dir)
+                        host, owner, self.curve_auth, self.client_pub_key_dir, self.config.get_rsync_includes())
                 ) is not None:
                     auths.remove((host, owner))
             if auths:
@@ -1385,7 +1385,8 @@ class Scheduler:
                     itasks,
                     self.curve_auth,
                     self.client_pub_key_dir,
-                    self.config.run_mode('simulation')
+                    self.config.run_mode('simulation'),
+                    self.config.get_rsync_includes()
             ):
                 LOG.info(
                     '[%s] -triggered off %s',
@@ -1400,14 +1401,6 @@ class Scheduler:
         self.broadcast_mgr.expire_broadcast(self.pool.get_min_point())
         self.xtrigger_mgr.housekeep()
         self.suite_db_mgr.put_xtriggers(self.xtrigger_mgr.sat_xtrig)
-        import ptvsd
-
-        # 5678 is the default attach port in the VS Code debug configurations
-        print("Waiting for debugger attach")
-        ptvsd.enable_attach(address=('localhost', 5678), redirect_output=True)
-        ptvsd.wait_for_attach()
-        breakpoint()
-
         LOG.debug("END TASK PROCESSING (took %s seconds)" % (time() - time0))
 
     def process_suite_db_queue(self):
