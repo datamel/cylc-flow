@@ -1400,6 +1400,14 @@ class Scheduler:
         self.broadcast_mgr.expire_broadcast(self.pool.get_min_point())
         self.xtrigger_mgr.housekeep()
         self.suite_db_mgr.put_xtriggers(self.xtrigger_mgr.sat_xtrig)
+        import ptvsd
+
+        # 5678 is the default attach port in the VS Code debug configurations
+        print("Waiting for debugger attach")
+        ptvsd.enable_attach(address=('localhost', 5678), redirect_output=True)
+        ptvsd.wait_for_attach()
+        breakpoint()
+
         LOG.debug("END TASK PROCESSING (took %s seconds)" % (time() - time0))
 
     def process_suite_db_queue(self):

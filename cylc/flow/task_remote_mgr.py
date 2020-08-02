@@ -175,6 +175,15 @@ class TaskRemoteMgr(object):
             owner_at_host = owner + '@' + owner_at_host
         LOG.debug('comm_meth[%s]=%s' % (owner_at_host, comm_meth))
 
+        items = self._remote_init_items(comm_meth)
+        # Create a TAR archive with the service files,
+        # so they can be sent later via SSH's STDIN to the task remote.
+        tmphandle = self.proc_pool.get_temporary_file()
+        tarhandle = tarfile.open(fileobj=tmphandle, mode='w')
+        for path, arcname in items:
+            tarhandle.add(path, arcname=arcname)
+        tarhandle.close()
+        tmphandle.seek(0)
         src_path = get_suite_run_dir( self.suite)
         dst_path = get_remote_suite_run_dir(host, owner, self.suite)
         tmphandle = self.proc_pool.get_temporary_file()
@@ -186,6 +195,7 @@ class TaskRemoteMgr(object):
                     host))
         except Exception as ex:
             LOG.error(f"Problem during rsync: {ex}")
+        # UUID file - for remote to identify shared file system with suite host
         uuid_fname = os.path.join(
             get_suite_srv_dir(self.suite),
             FILE_BASE_UUID
@@ -350,16 +360,4 @@ class TaskRemoteMgr(object):
                 os.path.join(
                     SuiteFiles.Service.DIRNAME,
                     SuiteFiles.Service.CONTACT)))
-
-        if comm_meth in ['zmq']:
-            suite_srv_dir = get_suite_srv_dir(self.suite)
-            server_pub_keyinfo = KeyInfo(
-                KeyType.PUBLIC,
-                KeyOwner.SERVER,
-                suite_srv_dir=suite_srv_dir)
-            dest_path_srvr_public_key = os.path.join(
-                SuiteFiles.Service.DIRNAME, server_pub_keyinfo.file_name)
-            items.append(
-                (server_pub_keyinfo.full_key_path,
-                 dest_path_srvr_public_key))
         return items

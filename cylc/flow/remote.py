@@ -154,18 +154,19 @@ def get_includes_to_rsync(dst_host):
         "/etc/***",
         "/lib/***"
     ]
-    extra_includes = []
 
-    for include in extra_includes:
-        if include is ends in a slash:  # item is a directory
-            reformat string so it is include/***
-            include.append
+    # extra_includes = []
+
+    # for include in extra_includes:
+    #     if include is ends in a slash:  # item is a directory
+    #         reformat string so it is include/***
+    #         include.append
 
 
-        includes.append(include)
-        else:  # item is a file
-            incudes.append(include)
-        return includes
+    #     includes.append(include)
+    #     else:  # item is a file
+    #         incudes.append(include)
+    return includes
 
 def construct_rsync_over_ssh_cmd(src_path, dst_path, dst_host):
     """Contructs the rsync command used for remote file installation
@@ -180,8 +181,8 @@ def construct_rsync_over_ssh_cmd(src_path, dst_path, dst_host):
     ssh_cmd = str(glbl_cfg().get_host_item("ssh command", host=dst_host))
     
     rsync_cmd = shlex.split(rsync_cmd) 
-    rsync_cmd.append("--rsh=" '"' + ssh_cmd + '"')
-    rsync_cmd.append("--filter=': .rsync-filter'")
+    rsync_cmd.append("--rsh=" + ssh_cmd )
+    rsync_cmd.append("--filter=: .rsync-filter")
     includes = get_includes_to_rsync(dst_host)
     for include in includes:
        rsync_cmd.append(f"--include={include}")
