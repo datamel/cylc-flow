@@ -698,7 +698,8 @@ class Scheduler:
             for host, owner in auths.copy():
                 if (
                     self.task_job_mgr.task_remote_mgr.remote_init(
-                        host, owner, self.curve_auth, self.client_pub_key_dir, self.config.get_rsync_includes())
+                        host, owner, self.curve_auth, self.client_pub_key_dir,
+                        self.config.get_rsync_includes())
                 ) is not None:
                     auths.remove((host, owner))
             if auths:

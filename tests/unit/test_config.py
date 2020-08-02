@@ -299,3 +299,49 @@ def test_integer_cycling_default_initial_point(cycling_mode):
     SuiteConfig.process_initial_cycle_point(mocked_config)
     assert mocked_config.cfg['scheduling']['initial cycle point'] == '1'
     assert mocked_config.initial_point == loader.get_point(1)
+
+
+def test_rsync_includes_will_not_accept_sub_directories():
+
+    suiterc_content = """
+    [scheduling]
+        initial cycle point = 2020-01-01
+        [[dependencies]]
+            graph = "blah => deeblah"
+    [scheduler]
+        includes = dir/, dir2/subdir2/, file1, file2
+        """
+    with TemporaryDirectory() as temp_dir:
+        suite_rc = Path(temp_dir, "suite.rc")
+        with suite_rc.open(mode="w") as f:
+            f.write(suiterc_content)
+            f.flush()
+
+        config = SuiteConfig(suite="rsynctest", fpath=suite_rc)
+
+        with pytest.raises(SuiteConfigError) as exc:
+            SuiteConfig.get_rsync_includes(config)
+        assert "Directories can only be from the top level" in str(exc.value)
+
+
+def test_valid_rsync_includes_returns_correct_list():
+    """Test that the rsync includes in the correct """
+
+    suiterc_content = """
+    [scheduling]
+        initial cycle point = 2020-01-01
+        [[dependencies]]
+            graph = "blah => deeblah"
+    [scheduler]
+        includes = dir/, dir2/, file1, file2
+        """
+    with TemporaryDirectory() as temp_dir:
+        suite_rc = Path(temp_dir, "suite.rc")
+        with suite_rc.open(mode="w") as f:
+            f.write(suiterc_content)
+            f.flush()
+
+        config = SuiteConfig(suite="rsynctest", fpath=suite_rc)
+
+        rsync_includes = SuiteConfig.get_rsync_includes(config)
+        assert rsync_includes == ['dir/', 'dir2/', 'file1', 'file2']
