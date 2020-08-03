@@ -2243,3 +2243,18 @@ class SuiteConfig(object):
             return []
         else:
             return None
+
+    def get_rsync_includes(self):
+        """Returns and validates a list of files/directories to include in the
+        remote file installation."""
+        includes = self.cfg['scheduler']['includes']
+        if includes:
+            for include in includes:
+                if include.count("/") > 1:
+                    raise SuiteConfigError(
+                        "Directories can only be from the top level")
+
+            return includes
+            # illegal_includes = []
+            # add it to a new list of illegal items
+            # validate - return or raise SuiteConfigError

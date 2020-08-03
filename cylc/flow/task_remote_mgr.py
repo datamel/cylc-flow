@@ -35,7 +35,7 @@ import cylc.flow.flags
 from cylc.flow.hostuserutil import (
     is_remote_host, is_remote_platform
 )
-from cylc.flow.pathutil import get_remote_suite_run_dir
+from cylc.flow.pathutil import get_remote_suite_run_dir, get_suite_run_dir
 from cylc.flow.subprocctx import SubProcContext
 from cylc.flow.suite_files import (
     SuiteFiles,
@@ -47,7 +47,10 @@ from cylc.flow.suite_files import (
 from cylc.flow.task_remote_cmd import (
     FILE_BASE_UUID, REMOTE_INIT_DONE, REMOTE_INIT_NOT_REQUIRED)
 from cylc.flow.platforms import platform_from_name, get_host_from_platform
-from cylc.flow.remote import construct_platform_ssh_cmd
+from cylc.flow.remote import (
+    construct_platform_ssh_cmd,
+    construct_rsync_over_ssh_cmd,
+    run_cmd)
 
 
 REC_COMMAND = re.compile(r'(`|\$\()\s*(.*)\s*([`)])$')
@@ -129,7 +132,8 @@ class TaskRemoteMgr(object):
             if value is not None:
                 del self.remote_host_str_map[key]
 
-    def remote_init(self, platform_name, curve_auth, client_pub_key_dir):
+    def remote_init(self, platform_name, curve_auth,
+                    client_pub_key_dir, rsync_includes):
         """Initialise a remote [owner@]host if necessary.
 
         Create UUID file on a platform ".service/uuid" for remotes to identify
@@ -192,6 +196,16 @@ class TaskRemoteMgr(object):
             tarhandle.add(path, arcname=arcname)
         tarhandle.close()
         tmphandle.seek(0)
+        src_path = get_suite_run_dir(self.suite)
+        dst_path = get_remote_suite_run_dir(host, owner, self.suite)
+        try:
+            run_cmd(construct_rsync_over_ssh_cmd(
+                    src_path,
+                    dst_path,
+                    host,
+                    rsync_includes))
+        except Exception as ex:
+            LOG.error(f"Problem during rsync: {ex}")
         # UUID file - for remote to identify shared file system with suite host
         uuid_fname = os.path.join(
             get_suite_srv_dir(self.suite),
@@ -364,16 +378,4 @@ class TaskRemoteMgr(object):
                 os.path.join(
                     SuiteFiles.Service.DIRNAME,
                     SuiteFiles.Service.CONTACT)))
-
-        if comm_meth in ['zmq']:
-            suite_srv_dir = get_suite_srv_dir(self.suite)
-            server_pub_keyinfo = KeyInfo(
-                KeyType.PUBLIC,
-                KeyOwner.SERVER,
-                suite_srv_dir=suite_srv_dir)
-            dest_path_srvr_public_key = os.path.join(
-                SuiteFiles.Service.DIRNAME, server_pub_keyinfo.file_name)
-            items.append(
-                (server_pub_keyinfo.full_key_path,
-                 dest_path_srvr_public_key))
         return items

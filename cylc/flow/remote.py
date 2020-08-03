@@ -31,6 +31,7 @@ from time import sleep
 from cylc.flow.cfgspec.glbl_cfg import glbl_cfg
 import cylc.flow.flags
 from cylc.flow import __version__ as CYLC_VERSION
+from cylc.flow import LOG
 from cylc.flow.platforms import platform_from_name, get_host_from_platform
 
 
@@ -135,6 +136,59 @@ def run_cmd(
                 res, ' '.join(quote(item) for item in command)))
         else:
             return True
+
+
+def get_includes_to_rsync(rsync_includes=None):
+    """Returns a list of directories/files to include in the rsync.
+        Collects any additional directories, provided in config and
+        adds them to the list of default directories that will be installed
+        by rsync on the remote platform.
+    """
+
+    includes = [
+        "/.service/",  # explicitly include folder but not contents
+        "/.service/contact",
+        "/.service/server.key",
+        "/app/***",
+        "/bin/***",
+        "/etc/***",
+        "/lib/***"
+    ]
+
+    if rsync_includes:
+        for include in rsync_includes:
+            if include.endswith("/"):  # item is a directory
+                includes.append("/" + include + "***")
+            else:  # item is a file
+                includes.append("/" + include)
+
+    return includes
+
+
+def construct_rsync_over_ssh_cmd(
+        src_path, dst_path, dst_host, rsync_includes=None):
+    """Constructs the rsync command used for remote file installation
+        Args:
+        src_path(string): source path
+        dst_path(string): path of target
+        dst_host(string): remote host name
+    """
+
+    rsync_cmd = "rsync -v --perms --recursive --links --checksum --delete"
+
+    ssh_cmd = str(glbl_cfg().get_host_item("ssh command", host=dst_host))
+
+    rsync_cmd = shlex.split(rsync_cmd)
+    rsync_cmd.append("--rsh=" + ssh_cmd)
+    rsync_cmd.append("--filter=: .rsync-filter")
+    includes = get_includes_to_rsync(rsync_includes)
+    for include in includes:
+        rsync_cmd.append(f"--include={include}")
+    rsync_cmd.append("--exclude=*")  # exclude everything else
+    rsync_cmd.append(f"{src_path}/")
+    rsync_cmd.append(f"{dst_host}:{dst_path}/")
+    LOG.debug(f"rsync cmd use for file install: {rsync_cmd}")
+    return rsync_cmd
 
 
 def construct_platform_ssh_cmd(raw_cmd, platform, **kwargs):
