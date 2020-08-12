@@ -140,30 +140,20 @@ def run_cmd(
 
 
 def get_includes_to_rsync(rsync_includes=None):
-    """Returns a list of directories/files to include in the rsync.
-        Collects any additional directories, provided in config and 
-        adds them to the list of default directories that will be installed
-        by rsync on the remote platform.
+    """Returns a list of directories/files, configured in suite.rc,
+        to be included in the remote file installation.
     """
 
-    includes = [
-        "/.service/", # explicitly include folder but not contents
-        "/.service/contact",
-        "/.service/server.key",
-        "/app/***",
-        "/bin/***",
-        "/etc/***",
-        "/lib/***"
-    ]
+    configured_includes = []
 
     if rsync_includes:
         for include in rsync_includes:
             if include.endswith("/"):  # item is a directory
-                includes.append("/" + include +"***")
+                configured_includes.append("/" + include +"***")
             else:  # item is a file
-                includes.append("/" + include) 
+                configured_includes.append("/" + include) 
                 
-    return includes
+    return configured_includes
 
 
 def construct_rsync_over_ssh_cmd(
@@ -183,17 +173,26 @@ def construct_rsync_over_ssh_cmd(
     
     rsync_cmd = shlex.split(rsync_cmd) 
     rsync_cmd.append(f"--log-file={logfile}")
-    rsync_cmd.append("--rsh=" + ssh_cmd )
-    
+    rsync_cmd.append("--rsh=" + ssh_cmd)
+    # Note to future devs - careful changing the order of the following
+    # rsync options. 
+    rsync_cmd.append('--include=/.service/')
+    rsync_cmd.append('--include=/.service/server.key')
+    rsync_cmd.append('--include=/.service/contact')
+    excludes =['log/***', 'share/***', 'work/***']
+    for exclude in excludes:
+        rsync_cmd.append(f"--exclude={exclude}")
+    # rsync filter by the user - they should never be transferred.
+    rsync_cmd.append("--filter=: .rsync-filter")
+    includes = [
+        '/app/***',
+        '/bin/***',
+        '/etc/***',
+        '/lib/***']
     includes = get_includes_to_rsync(rsync_includes)
     for include in includes:
        rsync_cmd.append(f"--include={include}")
     # The following excludes are required in case these are added to the 
-    # rsync filter by the user - they should never be transferred.
-    excludes =['.service/***','log/', 'share', 'work']
-    for exclude in excludes:
-        rsync_cmd.append(f"--exclude={exclude}")
-    rsync_cmd.append("--filter=: .rsync-filter")
     rsync_cmd.append("--exclude=*")  # exclude everything else
     rsync_cmd.append(f"{src_path}/")
     rsync_cmd.append(f"{dst_host}:{dst_path}/")

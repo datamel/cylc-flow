@@ -86,14 +86,13 @@ with Conf(
 
                 .. note::
 
-                    These default to the following directories:
+                    These, as standard, include the following directories:
                         app
                         bin
                         etc
                         lib
-                    And to the following files (from the .service directory):
-                        contact (contains information about the running workflow)
-                        server.key (required for authentication)
+                    And include the server.key file (from the .service
+                    directory), this is required for authentication.
 
             These should be located in the top level of your Cylc suite, 
             ie. the directory that contains your suite.rc file.

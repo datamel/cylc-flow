@@ -128,10 +128,6 @@ class TaskRemoteMgr(object):
             if value is not None:
                 del self.remote_host_str_map[key]
 
-
-    
-
-
     def remote_init(self, host, owner, curve_auth, client_pub_key_dir, rsync_includes):
         """Initialise a remote [owner@]host if necessary.
 
@@ -187,17 +183,16 @@ class TaskRemoteMgr(object):
         src_path = get_suite_run_dir(self.suite)
         dst_path = get_remote_suite_run_dir(host, owner, self.suite)
         tmphandle = self.proc_pool.get_temporary_file()
-        # logfile = os.makedirs(rsync_log, get_suite_run_log_dir
         time_str = get_current_time_string(
             override_use_utc=True, use_basic_format=True,
             display_sub_seconds=False
         )
-        logfile = get_suite_run_log_dir(self.suite, f"log-file-install-{time_str}")
+        logfile = get_suite_run_log_dir(self.suite, f"log-file-install-{host}-{time_str}")
         with open(logfile, "wb") as handle:
-            handle.write(b"File installation information")
+            handle.write(b"File installation information: ")
         
         try:
-            run_cmd(construct_rsync_over_ssh_cmd(
+            Popen(construct_rsync_over_ssh_cmd(
                     src_path,
                     dst_path,
                     host,
