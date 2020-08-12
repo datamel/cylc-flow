@@ -180,26 +180,6 @@ class TaskRemoteMgr(object):
             tarhandle.add(path, arcname=arcname)
         tarhandle.close()
         tmphandle.seek(0)
-        src_path = get_suite_run_dir(self.suite)
-        dst_path = get_remote_suite_run_dir(host, owner, self.suite)
-        tmphandle = self.proc_pool.get_temporary_file()
-        time_str = get_current_time_string(
-            override_use_utc=True, use_basic_format=True,
-            display_sub_seconds=False
-        )
-        logfile = get_suite_run_log_dir(self.suite, f"log-file-install-{host}-{time_str}")
-        with open(logfile, "wb") as handle:
-            handle.write(b"File installation information: ")
-        
-        try:
-            Popen(construct_rsync_over_ssh_cmd(
-                    src_path,
-                    dst_path,
-                    host,
-                    logfile,
-                    rsync_includes))
-        except Exception as ex:
-            LOG.error(f"Problem during rsync: {ex}")
         # UUID file - for remote to identify shared file system with suite host
         uuid_fname = os.path.join(
             get_suite_srv_dir(self.suite),
@@ -225,7 +205,8 @@ class TaskRemoteMgr(object):
                 cmd),
             self._remote_init_callback,
             [host, owner, tmphandle, self.suite,
-             curve_auth, client_pub_key_dir])
+             curve_auth, client_pub_key_dir, rsync_includes])
+        tmphandle = self.proc_pool.get_temporary_file()
         # None status: Waiting for command to finish
         self.remote_init_map[(host, owner)] = None
         return self.remote_init_map[(host, owner)]
@@ -305,13 +286,35 @@ class TaskRemoteMgr(object):
 
     def _remote_init_callback(
             self, proc_ctx, host, owner, tmphandle,
-            suite, curve_auth, client_pub_key_dir):
+            suite, curve_auth, client_pub_key_dir, rsync_includes):
         """Callback when "cylc remote-init" exits"""
         self.ready = True
         try:
             tmphandle.close()
         except OSError:  # E.g. ignore bad unlink, etc
             pass
+        if REMOTE_INIT_DONE in proc_ctx.out:
+
+            src_path = get_suite_run_dir(self.suite)
+            dst_path = get_remote_suite_run_dir(host, owner, self.suite)
+            time_str = get_current_time_string(
+                override_use_utc=True, use_basic_format=True,
+                display_sub_seconds=False
+            )
+            logfile = get_suite_run_log_dir(
+                self.suite, f"log-file-install-{host}-{time_str}")
+            with open(logfile, "wb") as handle:
+               handle.write(b"File installation information: ")
+
+            try:
+              Popen(construct_rsync_over_ssh_cmd(
+                  src_path,
+                  dst_path,
+                  host,
+                    logfile,
+                    rsync_includes))
+            except Exception as ex:
+                LOG.error(f"Problem during rsync: {ex}")
         if proc_ctx.ret_code == 0:
             if "KEYSTART" in proc_ctx.out:
                 regex_result = re.search(

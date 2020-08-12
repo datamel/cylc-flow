@@ -17,6 +17,7 @@
 
 from pathlib import Path
 import os
+from platform import platform
 import re
 
 from cylc.flow import LOG
@@ -207,7 +208,7 @@ with Conf('flow.rc', desc='''
 
     # job platforms
     with Conf('job platforms'):
-        with Conf('<platform name>'):
+        with Conf('<platform name>') as platform:
             Conf('batch system', VDR.V_STRING, 'background')
             Conf('batch submit command template', VDR.V_STRING)
             Conf('shell', VDR.V_STRING, '/bin/bash')
@@ -436,6 +437,9 @@ with Conf('flow.rc', desc='''
                 accepts up to 236 characters.
             ''')
             Conf('owner', VDR.V_STRING)
+            Conf('install target', VDR.V_STRING, default=platform, desc='''
+            This defaults to the platform name. Configure remote installation 
+            by platform.  Use this option to denote shared file systems''')
 
     # Platform Groups
     with Conf('platform groups'):
