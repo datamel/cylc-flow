@@ -35,7 +35,7 @@ from cylc.flow.cfgspec.glbl_cfg import glbl_cfg
 from cylc.flow.exceptions import TaskRemoteMgmtError
 import cylc.flow.flags
 from cylc.flow.hostuserutil import is_remote, is_remote_host, is_remote_user
-from cylc.flow.pathutil import get_remote_suite_run_dir, get_suite_run_dir
+from cylc.flow.pathutil import get_remote_suite_run_dir, get_suite_run_dir, get_suite_run_log_dir
 from cylc.flow.remote import construct_rsync_over_ssh_cmd, run_cmd
 from cylc.flow.subprocctx import SubProcContext
 from cylc.flow.suite_files import (
@@ -47,7 +47,7 @@ from cylc.flow.suite_files import (
     get_contact_file)
 from cylc.flow.task_remote_cmd import (
     FILE_BASE_UUID, REMOTE_INIT_DONE, REMOTE_INIT_NOT_REQUIRED)
-
+from cylc.flow.wallclock import get_current_time_string
 
 REC_COMMAND = re.compile(r'(`|\$\()\s*(.*)\s*([`)])$')
 REMOTE_INIT_FAILED = 'REMOTE INIT FAILED'
@@ -184,15 +184,24 @@ class TaskRemoteMgr(object):
             tarhandle.add(path, arcname=arcname)
         tarhandle.close()
         tmphandle.seek(0)
-        src_path = get_suite_run_dir( self.suite)
+        src_path = get_suite_run_dir(self.suite)
         dst_path = get_remote_suite_run_dir(host, owner, self.suite)
         tmphandle = self.proc_pool.get_temporary_file()
-
+        # logfile = os.makedirs(rsync_log, get_suite_run_log_dir
+        time_str = get_current_time_string(
+            override_use_utc=True, use_basic_format=True,
+            display_sub_seconds=False
+        )
+        logfile = get_suite_run_log_dir(self.suite, f"log-file-install-{time_str}")
+        with open(logfile, "wb") as handle:
+            handle.write(b"File installation information")
+        
         try:
             run_cmd(construct_rsync_over_ssh_cmd(
                     src_path,
                     dst_path,
                     host,
+                    logfile,
                     rsync_includes))
         except Exception as ex:
             LOG.error(f"Problem during rsync: {ex}")

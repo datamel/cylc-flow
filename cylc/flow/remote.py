@@ -165,12 +165,16 @@ def get_includes_to_rsync(rsync_includes=None):
                 
     return includes
 
-def construct_rsync_over_ssh_cmd(src_path, dst_path, dst_host, rsync_includes=None):
+
+def construct_rsync_over_ssh_cmd(
+        src_path, dst_path, dst_host, logfile, rsync_includes=None):
     """Constructs the rsync command used for remote file installation
         Args:
         src_path(string): source path
         dst_path(string): path of target
         dst_host(string): remote host name
+        logfile(str): the path to the file logging the rsync
+        rsync_includes(list): files and directories to be included in the rsync
     """
 
     rsync_cmd = "rsync -v --perms --recursive --links --checksum --delete"
@@ -178,11 +182,18 @@ def construct_rsync_over_ssh_cmd(src_path, dst_path, dst_host, rsync_includes=No
     ssh_cmd = str(glbl_cfg().get_host_item("ssh command", host=dst_host))
     
     rsync_cmd = shlex.split(rsync_cmd) 
+    rsync_cmd.append(f"--log-file={logfile}")
     rsync_cmd.append("--rsh=" + ssh_cmd )
-    rsync_cmd.append("--filter=: .rsync-filter")
+    
     includes = get_includes_to_rsync(rsync_includes)
     for include in includes:
        rsync_cmd.append(f"--include={include}")
+    # The following excludes are required in case these are added to the 
+    # rsync filter by the user - they should never be transferred.
+    excludes =['.service/***','log/', 'share', 'work']
+    for exclude in excludes:
+        rsync_cmd.append(f"--exclude={exclude}")
+    rsync_cmd.append("--filter=: .rsync-filter")
     rsync_cmd.append("--exclude=*")  # exclude everything else
     rsync_cmd.append(f"{src_path}/")
     rsync_cmd.append(f"{dst_host}:{dst_path}/")
